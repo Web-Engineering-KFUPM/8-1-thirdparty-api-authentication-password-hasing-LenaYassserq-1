@@ -309,7 +309,46 @@ app.post("/login", async (req, res) => {
 // GET /weather?city=Riyadh
 // =========================
 app.get("/weather", async (req, res) => {
-  // Implement logic here based on the TODO 3.
+  const auth = req.headers.authorization;
+
+  if (!auth) {
+    return res.status(401).json({ error: "Missing token" });
+  }
+
+  const token = auth.split(" ")[1];
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+  } catch {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+
+  const city = req.query.city;
+
+  if (!city) {
+    return res.status(400).json({ error: "City required" });
+  }
+
+  try {
+    const url = `https://wttr.in/${encodeURIComponent(city)}?format=j1`;
+    const weatherResponse = await fetch(url);
+
+    if (!weatherResponse.ok) {
+      return res.status(500).json({ error: "Error from weather API" });
+    }
+
+    const data = await weatherResponse.json();
+
+    return res.json({
+      city,
+      temp: data.temperature,
+      description: data.description,
+      wind: data.wind,
+      raw: data
+    });
+  } catch (err) {
+    return res.status(500).json({ error: "Server error during weather fetch" });
+  }
 });
 
 // Start server
